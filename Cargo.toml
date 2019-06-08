@@ -1,0 +1,19 @@
+[package]
+name = "fastax"
+version = "1.0.0"
+authors = ["Picani <picani@laposte.net>"]
+edition = "2015"
+
+[dependencies]
+ansi_term = "0.11"
+csv = "1"
+exitcode = "1"
+ftp = "3"
+log = "0.4"
+loggerv = "0.7"
+md5 = "0.6"
+rusqlite = "0.16"
+# simple_logger = "1.0.1"
+structopt = "0.2"
+xdg = "^2"
+zip = "0.5"
