@@ -40,7 +40,7 @@ them in a local SQLite database. `-v` asks fastax to tell what it's doing.
 your email is optional but preferred.
 
 The database is located in a `fastax` folder inside your local data folder,
-which should be `$HOME/.local/data`.
+which should be `$HOME/.local/share`.
 
 Usage
 -----
