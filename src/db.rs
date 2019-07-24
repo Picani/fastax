@@ -20,6 +20,34 @@ fn open_db(dir: &PathBuf) -> Result<Connection, Box<dyn Error>> {
     Ok(conn)
 }
 
+/// Get the Taxonomy IDs corresponding to this scientific names. The used
+/// name class are "scientific name", "synonym" and "genbank synonym".
+/// Either return all the IDs or an error.
+pub fn get_taxids(dir: &PathBuf, names: Vec<String>) -> Result<Vec<i64>, Box<dyn Error>> {
+    let mut taxids = vec![];
+    let conn = open_db(dir)?;
+
+    let mut stmt = conn.prepare("
+    SELECT tax_id FROM names
+    WHERE name_class IN ('scientific name', 'synonym', 'genbank synonym')
+    AND name=?")?;
+
+    for name in names.iter() {
+        let mut rows = stmt.query(&[name])?;
+
+        if let Some(row) = rows.next() {
+            // Here, row.get has no reason to return an error
+            // so row.get_unwrap should be safe
+            let row = row?;
+            taxids.push(row.get(0));
+        } else {
+            return Err(From::from(format!("No such scientific name: {}", name)));
+        }
+    }
+
+    Ok(taxids)
+}
+
 /// Get the Nodes corresponding to the IDs. The Nodes are ordered in the same
 /// way as the IDs. If an ID is invalid, an error is returned.
 pub fn get_nodes(dir: &PathBuf, ids: Vec<i64>) -> Result<Vec<Node>, Box<dyn Error>> {
