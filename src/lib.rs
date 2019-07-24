@@ -43,24 +43,24 @@ pub struct Opt {
 
 #[derive(StructOpt)]
 enum Command {
-    /// Lookup for NCBI Taxonomy ID(s) and show the results; no search
-    /// is perform, only exact matches are returned
+    /// Lookup for NCBI Taxonomy ID(s) or scientific name(s) and show the
+    /// results; no search is performed, only exact matches are returned
     #[structopt(name = "show")]
     Show {
-        /// The NCBI Taxonomy ID(s)
-        ids: Vec<i64>,
+        /// The NCBI Taxonomy ID(s) or scientific name(s)
+        terms: Vec<String>,
 
         /// Output the results as CSV
         #[structopt(short = "c", long = "csv")]
         csv: bool,
     },
 
-    /// Output the lineage of the node (i.e. all nodes in
+    /// Output the lineage of the node(s) (i.e. all nodes in
     /// the path to the root)
     #[structopt(name = "lineage")]
     Lineage {
-        /// The NCBI Taxonomy ID(s)
-        ids: Vec<i64>,
+        /// The NCBI Taxonomy ID(s) or scientific name(s)
+        terms: Vec<String>,
 
         /// Keep only the nodes that have a named rank
         #[structopt(short = "r", long = "ranks")]
@@ -84,8 +84,8 @@ enum Command {
     /// Make a tree from the root to all given IDs
     #[structopt(name = "tree")]
     Tree {
-        /// The NCBI Taxonomy IDs
-        ids: Vec<i64>,
+        /// The NCBI Taxonomy IDs or scientific name(s)
+        terms: Vec<String>,
 
         /// Show all internal nodes
         #[structopt(short = "i", long = "internal")]
@@ -140,7 +140,8 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
             info!("C'est fini !");
         },
 
-        Command::Show{ids, csv} => {
+        Command::Show{terms, csv} => {
+            let ids = term_to_taxids(&datadir, terms)?;
             let nodes = db::get_nodes(&datadir, ids)?;
             if csv {
                 let mut wtr = csv::Writer::from_writer(io::stdout());
@@ -166,7 +167,8 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
             }
         },
 
-        Command::Lineage{ids, ranks, csv} => {
+        Command::Lineage{terms, ranks, csv} => {
+            let ids = term_to_taxids(&datadir, terms)?;
             let lineages = ids.iter()
                     .map(|id| db::get_lineage(&datadir, *id));
 
@@ -214,7 +216,8 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
             }
         },
 
-        Command::Tree{ids, internal, newick} => {
+        Command::Tree{terms, internal, newick} => {
+            let ids = term_to_taxids(&datadir, terms)?;
             let mut lineages = ids.iter()
                 .map(|id| db::get_lineage(&datadir, *id))
                 .collect::<Result<Vec<_>, _>>()?;
