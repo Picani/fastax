@@ -1,6 +1,6 @@
 [package]
 name = "fastax"
-version = "1.0.1"
+version = "1.1.0"
 authors = ["Picani <picani@laposte.net>"]
 license = "MIT"
 edition = "2015"
