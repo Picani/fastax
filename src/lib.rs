@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 use std::io;
+use std::path::PathBuf;
 
 use structopt::StructOpt;
 
@@ -320,4 +321,47 @@ impl fmt::Display for Node {
 
         write!(f, "{}", lines)
     }
+}
+
+//=============================================================================
+// Utils functions
+
+/// Trim a string and replace all underscore by space. Return a new String.
+fn clean_term(term: &String) -> String {
+    term.trim().replace("_", " ")
+}
+
+
+/// Return a list of Taxonomy IDs from the given terms. Each term can be
+/// an ID already or a scientific name. In the second case, the corresponding
+/// ID is fetched from the database. The input order is kept.
+/// Return either a vector of taxids or an error (for example, one scientific
+/// name cannot be found).
+fn term_to_taxids(datadir: &PathBuf, terms: Vec<String>) -> Result<Vec<i64>, Box<dyn Error>> {
+    // We want to keep the input order. This makes the code slightly
+    // more complicated.
+    let mut ids: Vec<i64> = vec![];
+    let terms: Vec<String> = terms.iter()
+        .map(|term| clean_term(term))
+        .collect();
+    let mut names: Vec<String> = vec![];
+    let mut indices: Vec<usize> = vec![];
+
+    for (i, term) in terms.iter().enumerate() {
+        match term.parse::<i64>() {
+            Ok(id) => ids.push(id),
+            Err(_) => {
+                names.push(term.to_string());
+                indices.push(i);
+                ids.push(-1)
+            }
+        };
+    }
+
+    let name_ids = db::get_taxids(&datadir, names)?;
+    for (idx, taxid) in indices.iter().zip(name_ids.iter()) {
+        ids[*idx] = *taxid;
+    }
+
+    Ok(ids)
 }
