@@ -45,6 +45,17 @@ which should be `$HOME/.local/share`.
 Usage
 -----
 
+For each command, you need to query at least one node. The term used to get
+a node can be either its unique NCBI Taxonomy ID (so called taxid), its
+binomial scientific name or its binomial scientific name with the two part
+separated by an underscore (the character `_`). This last option is useful
+for scripting.
+
+Note also that for some species, multiple binomial scientific names are in
+use. Fastax looks for each of them.
+
+### The `show` command
+
 You can get general information about a node:
 
 ```
@@ -66,6 +77,38 @@ Uses the Standard genetic code.
 Its mitochondria use the Yeast Mitochondrial genetic code.
 ```
 
+or:
+
+```
+$ fastax show "Homo sapiens"
+Homo sapiens - species
+----------------------
+NCBI Taxonomy ID: 9606
+Commonly named human.
+Also known as:
+* man
+First description:
+* Homo sapiens Linnaeus, 1758
+Part of the Primates.
+Uses the Standard genetic code.
+Its mitochondria use the Vertebrate Mitochondrial genetic code.
+```
+
+or also:
+
+```
+$ fastax show Tyrannosaurus_rex
+Tyrannosaurus rex - species
+---------------------------
+NCBI Taxonomy ID: 436495
+Part of the Vertebrates.
+Uses the Standard genetic code.
+Its mitochondria use the Vertebrate Mitochondrial genetic code.
+```
+
+
+### The `lineage` command
+
 You can get the lineage of a node:
 
 ```
@@ -86,10 +129,20 @@ root
               └── species: Saccharomyces cerevisiae (taxid: 4932)
 ```
 
+The same lineage in CSV:
+
+```
+$ fastax lineage Saccharomyces_cerevisiae
+no rank:root:1,no rank:cellular organisms:131567,superkingdom:Eukaryota:2759,no rank:Opisthokonta:33154,kingdom:Fungi:4751,subkingdom:Dikarya:451864,phylum:Ascomycota:4890,no rank:saccharomyceta:716545,subphylum:Saccharomycotina:147537,class:Saccharomycetes:4891,order:Saccharomycetales:4892,family:Saccharomycetaceae:4893,genus:Saccharomyces:4930,species:Saccharomyces cerevisiae:4932
+```
+
+
+### The `tree` command
+
 You can get a phylogenetic tree:
 
 ```
-$ fastax tree 562 4932 7227 9606 10090
+$ fastax tree "Escherichia coli" 4932 Drosophila_melanogaster 9606 "Mus musculus"
  ─┬─ no rank: root
   └─┬─ no rank: cellular organisms
     ├─┬─ no rank: Opisthokonta
