@@ -330,7 +330,7 @@ pub fn insert_names(datadir: &PathBuf) -> Result<(), Box<dyn Error>> {
 
     debug!("Creating names indexes.");
     conn.execute("CREATE INDEX idx_names_tax_id ON names(tax_id);", NO_PARAMS)?;
-    conn.execute("CREATE INDEX idx_names_class ON names(name_class);", NO_PARAMS)?;
+    conn.execute("CREATE INDEX idx_names_name ON names(name);", NO_PARAMS)?;
 
     Ok(())
 }
