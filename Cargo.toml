@@ -6,6 +6,8 @@ license = "MIT"
 edition = "2015"
 description = "Make phylogenetic trees and lineages from the NCBI Taxonomy database"
 repository = "https://github.com/Picani/fastax"
+categories = ["command-line-utilities", "science"]
+keywords = ["cli", "bioinformatics", "phylogenetics"]
 
 [dependencies]
 ansi_term = "0.11"
