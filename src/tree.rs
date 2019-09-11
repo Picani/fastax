@@ -7,16 +7,17 @@ use Node;
 
 /// A taxonomy tree
 pub struct Tree {
+    root: i64,
     nodes: HashMap<i64, Node>,
     children: HashMap<i64, HashSet<i64>>,
     marked: HashSet<i64>
 }
 
 impl Tree {
-    /// Create a new Tree containing the given nodes. The root is always
-    /// the Node with ID 1.
-    pub fn new(nodes: &Vec<Node>) -> Tree {
+    /// Create a new Tree containing the given nodes.
+    pub fn new(root_id: i64, nodes: &Vec<Node>) -> Tree {
         let mut tree = Tree{
+            root: root_id,
             nodes: HashMap::new(),
             children: HashMap::new(),
             marked: HashSet::new()
@@ -54,7 +55,7 @@ impl Tree {
     /// Simplify the tree by removing all nodes that have only one child
     /// *and* are not marked.
     pub fn simplify(&mut self) {
-        self.simplify_helper(1);
+        self.simplify_helper(self.root);
         self.children.retain(|_, v| !v.is_empty());
     }
 
@@ -98,7 +99,7 @@ impl Tree {
     /// Return a Newick representation of the tree.
     pub fn to_newick(&self) -> String {
         let mut n = String::from("(");
-        self.newick_helper(&mut n, 1);
+        self.newick_helper(&mut n, self.root);
         n.push_str(");");
         n
     }
@@ -199,7 +200,7 @@ impl Tree {
 impl fmt::Display for Tree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = String::new();
-        self.print_tree_helper(&mut s, 1, String::from(" "), false);
+        self.print_tree_helper(&mut s, self.root, String::from(" "), false);
         write!(f, "{}", s)
     }
 }
