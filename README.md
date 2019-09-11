@@ -163,6 +163,61 @@ $ fastax tree -n 562 4932 7227 9606 10090
 ```
 
 
+### The `subtree` command
+
+You can get the phylogenetic tree of the children of a node:
+
+```
+$ fastax subtree Homininae
+ ─┬─ subfamily: Homininae
+  ├─┬─ genus: Homo
+  │ ├── species: Homo heidelbergensis
+  │ └─┬─ species: Homo sapiens
+  │   ├── subspecies: Homo sapiens subsp. 'Denisova'
+  │   └── subspecies: Homo sapiens neanderthalensis
+  ├─┬─ genus: Pan
+  │ ├─┬─ species: Pan troglodytes
+  │ │ ├── subspecies: Pan troglodytes verus x troglodytes
+  │ │ ├── subspecies: Pan troglodytes ellioti
+  │ │ ├── subspecies: Pan troglodytes vellerosus
+  │ │ ├── subspecies: Pan troglodytes verus
+  │ │ ├── subspecies: Pan troglodytes troglodytes
+  │ │ └── subspecies: Pan troglodytes schweinfurthii
+  │ └── species: Pan paniscus
+  └─┬─ genus: Gorilla
+    ├─┬─ species: Gorilla beringei
+    │ ├── subspecies: Gorilla beringei beringei
+    │ └── subspecies: Gorilla beringei graueri
+    └─┬─ species: Gorilla gorilla
+      ├── subspecies: Gorilla gorilla diehli
+      ├── subspecies: Gorilla gorilla uellensis
+      └── subspecies: Gorilla gorilla gorilla
+```
+
+If you only want the species:
+
+```
+$ fastax subtree -s Homininae
+ ─┬─ subfamily: Homininae
+  ├─┬─ genus: Homo
+  │ ├── species: Homo heidelbergensis
+  │ └── species: Homo sapiens
+  ├─┬─ genus: Pan
+  │ ├── species: Pan troglodytes
+  │ └── species: Pan paniscus
+  └─┬─ genus: Gorilla
+    ├── species: Gorilla beringei
+    └── species: Gorilla gorilla
+```
+
+The same tree in newick:
+
+```
+$ fastax subtree -sn Homininae
+(Homininae,(Homo,(Homo sapiens,Homo heidelbergensis),Gorilla,(Gorilla beringei,Gorilla gorilla),Pan,(Pan paniscus,Pan troglodytes)));
+```
+
+
 [1]: http://evolution.genetics.washington.edu/phylip/newicktree.html
 [2]: https://www.rust-lang.org
 [3]: https://crates.io
