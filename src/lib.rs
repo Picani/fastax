@@ -223,7 +223,8 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
                 .collect::<Result<Vec<_>, _>>()?;
             lineages.sort_by(|a, b| b.len().cmp(&a.len()));
 
-            let mut tree = tree::Tree::new(&lineages.pop().unwrap());
+            // The root taxid is 1
+            let mut tree = tree::Tree::new(1, &lineages.pop().unwrap());
             for lineage in lineages.iter() {
                 tree.add_nodes(lineage);
             }
