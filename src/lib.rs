@@ -94,7 +94,28 @@ enum Command {
         /// Print the tree in Newick format
         #[structopt(short = "n", long = "newick")]
         newick: bool,
-    }
+    },
+
+    /// Make a tree with the given ID as root.
+    /// Warning: by default, it doesn't show all internal nodes, which may
+    /// not be what you want! In that case, use -i/--internal.
+    #[structopt(name = "subtree")]
+    SubTree {
+        /// The NCBI Taxonomy ID or scientific name
+        term: String,
+
+        /// Stop at species instead of tips (can be subspecies)
+        #[structopt(short = "s", long = "species")]
+        species: bool,
+
+        /// Show all internal nodes
+        #[structopt(short = "i", long = "internal")]
+        internal: bool,
+
+        /// Print the tree in Newick format
+        #[structopt(short = "n", long = "newick")]
+        newick: bool,
+    },
 }
 
 pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
@@ -229,6 +250,22 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
                 tree.add_nodes(lineage);
             }
             tree.mark_nodes(&ids);
+
+            if !internal {
+                tree.simplify();
+            }
+
+            if newick {
+                println!("{}", tree.to_newick());
+            } else {
+                println!("{}", tree);
+            }
+        },
+
+        Command::SubTree{term, species, internal, newick} => {
+            let id = term_to_taxids(&datadir, vec![term])?[0];
+            let nodes = db::get_children(&datadir, id, species)?;
+            let mut tree = tree::Tree::new(id, &nodes);
 
             if !internal {
                 tree.simplify();
