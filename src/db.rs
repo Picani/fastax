@@ -140,6 +140,41 @@ pub fn get_lineage(dir: &PathBuf, id: i64) -> Result<Vec<Node>, Box<dyn Error>> 
     Ok(lineage)
 }
 
+/// Get the children of the Node corresponding to this unique ID. If
+/// `species_only` is true, then stop when the children are species, else
+/// continue until the children are tips.
+/// Note that the ID given as argument is included in the results. Thus, the
+/// resulting vector contains at least one element.
+pub fn get_children(dir: &PathBuf, id: i64, species_only: bool) -> Result<Vec<Node>, Box<dyn Error>> {
+    let mut ids: Vec<i64> = vec![];
+    let mut temp_ids = vec![id];
+
+    let conn = open_db(dir)?;
+    let mut stmt = conn.prepare("SELECT tax_id, rank FROM nodes WHERE parent_tax_id=?")?;
+
+    loop {
+        if let Some(id) = temp_ids.pop() {
+            ids.push(id);
+
+            let mut rows = stmt.query(&[id])?;
+            while let Some(result_row) = rows.next() {
+                let row = result_row?;
+                let rank: String = row.get(1);
+
+                if species_only && rank == "species" {
+                    ids.push(row.get(0));
+                } else {
+                    temp_ids.push(row.get(0))
+                }
+            }
+        } else {
+            break;
+        }
+    }
+
+    let nodes = get_nodes(dir, ids)?;
+    Ok(nodes)
+}
 
 //-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 // Database downloading
