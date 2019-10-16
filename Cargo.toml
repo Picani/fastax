@@ -1,10 +1,11 @@
 [package]
 name = "fastax"
-version = "1.2.0"
+version = "1.3.0"
 authors = ["Picani <picani@laposte.net>"]
 license = "MIT"
 edition = "2015"
 description = "Make phylogenetic trees and lineages from the NCBI Taxonomy database"
+readme = "README.md"
 repository = "https://github.com/Picani/fastax"
 categories = ["command-line-utilities", "science"]
 keywords = ["cli", "bioinformatics", "phylogenetics"]
