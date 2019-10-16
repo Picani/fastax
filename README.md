@@ -162,6 +162,69 @@ $ fastax tree -n 562 4932 7227 9606 10090
 (root,(cellular organisms,(Escherichia coli,Opisthokonta,(Saccharomyces cerevisiae,Bilateria,(Drosophila melanogaster,Euarchontoglires,(Homo sapiens,Mus musculus))))));
 ```
 
+With `-f/--format`, you can also change the default node formatting:
+
+```
+$ fastax tree -f "%taxid (%name)" "Escherichia coli" 4932 Drosophila_melanogaster 9606 "Mus musculus"
+ ─┬─ 1 (root)
+  └─┬─ 131567 (cellular organisms)
+    ├─┬─ 33154 (Opisthokonta)
+    │ ├─┬─ 33213 (Bilateria)
+    │ │ ├─┬─ 314146 (Euarchontoglires)
+    │ │ │ ├── 10090 (Mus musculus)
+    │ │ │ └── 9606 (Homo sapiens)
+    │ │ └── 7227 (Drosophila melanogaster)
+    │ └── 4932 (Saccharomyces cerevisiae)
+    └── 562 (Escherichia coli)
+```
+
+The available tags are
+
+* `%name` which is replaced by the scientific name,
+* `%rank` which is replaced by the rank,
+* `%taxid` which is replaced by the NCBI Taxonomy ID.
+
+By default, the nodes with only one child are hidden. You can show them with
+the `-i/--internal` option:
+
+```
+$ fastax tree -i Mus_musculus Rattus_norvegicus
+ ─┬─ no rank: root
+  └─┬─ no rank: cellular organisms
+    └─┬─ superkingdom: Eukaryota
+      └─┬─ no rank: Opisthokonta
+        └─┬─ kingdom: Metazoa
+          └─┬─ no rank: Eumetazoa
+            └─┬─ no rank: Bilateria
+              └─┬─ no rank: Deuterostomia
+                └─┬─ phylum: Chordata
+                  └─┬─ subphylum: Craniata
+                    └─┬─ no rank: Vertebrata
+                      └─┬─ no rank: Gnathostomata
+                        └─┬─ no rank: Teleostomi
+                          └─┬─ no rank: Euteleostomi
+                            └─┬─ superclass: Sarcopterygii
+                              └─┬─ no rank: Dipnotetrapodomorpha
+                                └─┬─ no rank: Tetrapoda
+                                  └─┬─ no rank: Amniota
+                                    └─┬─ class: Mammalia
+                                      └─┬─ no rank: Theria
+                                        └─┬─ no rank: Eutheria
+                                          └─┬─ no rank: Boreoeutheria
+                                            └─┬─ superorder: Euarchontoglires
+                                              └─┬─ no rank: Glires
+                                                └─┬─ order: Rodentia
+                                                  └─┬─ suborder: Myomorpha
+                                                    └─┬─ no rank: Muroidea
+                                                      └─┬─ family: Muridae
+                                                        └─┬─ subfamily: Murinae
+                                                          ├─┬─ genus: Rattus
+                                                          │ └── species: Rattus norvegicus
+                                                          └─┬─ genus: Mus
+                                                            └─┬─ subgenus: Mus
+                                                              └── species: Mus musculus
+```
+
 
 ### The `subtree` command
 
@@ -216,6 +279,18 @@ The same tree in newick:
 $ fastax subtree -sn Homininae
 (Homininae,(Homo,(Homo sapiens,Homo heidelbergensis),Gorilla,(Gorilla beringei,Gorilla gorilla),Pan,(Pan paniscus,Pan troglodytes)));
 ```
+
+As with the `tree` command, you can format the node with the `-f/--format`
+option, and show the internal nodes with the `-i/--internal` option. See
+above for more information.
+
+License
+-------
+
+Copyright © 2019 Sylvain PULICANI picani@laposte.net
+
+This work is free. You can redistribute it and/or modify it under the terms
+of the MIT license. See the `LICENSE` file for more details.
 
 
 [1]: http://evolution.genetics.washington.edu/phylip/newicktree.html
