@@ -30,6 +30,10 @@ impl Tree {
     pub fn add_nodes(&mut self, nodes: &Vec<Node>) {
         for node in nodes.iter() {
             if !self.nodes.contains_key(&node.tax_id) {
+                let mut node = node.clone();
+                if node.format_string.is_none() {
+                    node.format_string = Some(String::from("%rank: %name"));
+                }
                 self.nodes.insert(node.tax_id, node.clone());
             }
 
@@ -114,8 +118,7 @@ impl Tree {
         // unwrap are safe here because of the way we build the tree
         // and the nodes.
         let node = self.nodes.get(&taxid).unwrap();
-        let sciname = &node.names.get("scientific name").unwrap()[0];
-        n.push_str(&format!("{}", sciname));
+        n.push_str(&format!("{}", node));
 
         if let Some(children) = self.children.get(&taxid) {
             n.push_str(",(");
@@ -141,18 +144,16 @@ impl Tree {
     fn print_tree_helper(&self, s: &mut String, taxid: i64, prefix: String, was_first_child: bool) {
         // .unwrap() is safe here because of the way we build the tree.
         let node = self.nodes.get(&taxid).unwrap();
-        let sciname = &node.names.get("scientific name").unwrap()[0];
 
         if let Some(children) = self.children.get(&taxid) {
             if self.marked.contains(&taxid) {
-                s.push_str(&format!("{}\u{2500}\u{252C}\u{2500} {}: {}\n",
+                s.push_str(&format!("{}\u{2500}\u{252C}\u{2500} {}\n",
                                    prefix,
-                                   Style::new().bold().paint(&node.rank),
-                                   Style::new().bold().paint(sciname)));
+                                   Style::new().bold().paint(node.to_string())));
 
             } else {
-                s.push_str(&format!("{}\u{2500}\u{252C}\u{2500} {}: {}\n",
-                                   prefix, node.rank, sciname));
+                s.push_str(&format!("{}\u{2500}\u{252C}\u{2500} {}\n",
+                                   prefix, node));
             }
             let mut prefix = prefix.clone();
             prefix.pop();
@@ -185,13 +186,12 @@ impl Tree {
             }
         } else {
             if self.marked.contains(&taxid) {
-                s.push_str(&format!("{}\u{2500}\u{2500} {}: {}\n",
+                s.push_str(&format!("{}\u{2500}\u{2500} {}\n",
                                    prefix,
-                                   Style::new().bold().paint(&node.rank),
-                                   Style::new().bold().paint(sciname)));
+                                   Style::new().bold().paint(node.to_string())));
             } else {
-                s.push_str(&format!("{}\u{2500}\u{2500} {}: {}\n",
-                                   prefix, node.rank, sciname));
+                s.push_str(&format!("{}\u{2500}\u{2500} {}\n",
+                                    prefix, node));
             }
         }
     }
