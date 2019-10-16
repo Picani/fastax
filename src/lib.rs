@@ -294,7 +294,8 @@ pub struct Node {
     genetic_code: String,
     mito_genetic_code: Option<String>,
     comments: Option<String>,
-    names: HashMap<String, Vec<String>> // many synonym or common names
+    names: HashMap<String, Vec<String>>, // many synonym or common names
+    format_string: Option<String>,
 }
 
 impl Node {
@@ -307,13 +308,22 @@ impl Node {
             genetic_code: String::new(),
             mito_genetic_code: None, // Not all organisms have mitochondria
             comments: None, // Only a small fraction of nodes have comments
-            names: HashMap::new()
+            names: HashMap::new(),
+            format_string: None
         }
     }
 }
 
 impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(format_string) = &self.format_string {
+            // Format the Node according to its format string.
+            return write!(f, "{}", format_string
+                          .replace("%taxid", &self.tax_id.to_string())
+                          .replace("%name", &self.names.get("scientific name").unwrap()[0])
+                          .replace("%rank", &self.rank));
+        }
+
         let mut lines = String::new();
 
         let sciname = &self.names.get("scientific name").unwrap()[0];
