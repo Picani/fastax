@@ -94,6 +94,12 @@ enum Command {
         /// Print the tree in Newick format
         #[structopt(short = "n", long = "newick")]
         newick: bool,
+
+        /// Format the nodes with this formatting string (%rank is replaced
+        /// the rank, %name by the scientific name and %taxid by the NCBI
+        /// taxonomy ID)
+        #[structopt(short = "f", long = "format")]
+        format: Option<String>,
     },
 
     /// Make a tree with the given ID as root.
@@ -115,6 +121,12 @@ enum Command {
         /// Print the tree in Newick format
         #[structopt(short = "n", long = "newick")]
         newick: bool,
+
+        /// Format the nodes with this formatting string (%rank is replaced
+        /// the rank, %name by the scientific name and %taxid by the NCBI
+        /// taxonomy ID)
+        #[structopt(short = "f", long = "format")]
+        format: Option<String>,
     },
 }
 
@@ -237,12 +249,28 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
             }
         },
 
-        Command::Tree{terms, internal, newick} => {
+        Command::Tree{terms, internal, newick, format} => {
             let ids = term_to_taxids(&datadir, terms)?;
             let mut lineages = ids.iter()
                 .map(|id| db::get_lineage(&datadir, *id))
                 .collect::<Result<Vec<_>, _>>()?;
             lineages.sort_by(|a, b| b.len().cmp(&a.len()));
+
+            if let Some(format_string) = format {
+                for lineage in lineages.iter_mut() {
+                    for mut node in lineage.iter_mut() {
+                        node.format_string = Some(format_string.clone());
+                    }
+                }
+            } else if newick {
+                // The default formatting for tree is not really useful
+                // for newick trees
+                for lineage in lineages.iter_mut() {
+                    for mut node in lineage.iter_mut() {
+                        node.format_string = Some(String::from("%name"));
+                    }
+                }
+            }
 
             // The root taxid is 1
             let mut tree = tree::Tree::new(1, &lineages.pop().unwrap());
@@ -262,9 +290,21 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
             }
         },
 
-        Command::SubTree{term, species, internal, newick} => {
+        Command::SubTree{term, species, internal, newick, format} => {
             let id = term_to_taxids(&datadir, vec![term])?[0];
-            let nodes = db::get_children(&datadir, id, species)?;
+            let mut nodes = db::get_children(&datadir, id, species)?;
+            if let Some(format_string) = format {
+                for mut node in nodes.iter_mut() {
+                    node.format_string = Some(format_string.clone());
+                }
+            } else if newick {
+                // The default formatting for tree is node really useful
+                // for newick trees
+                for mut node in nodes.iter_mut() {
+                    node.format_string = Some(String::from("%name"));
+                }
+            }
+
             let mut tree = tree::Tree::new(id, &nodes);
 
             if !internal {
