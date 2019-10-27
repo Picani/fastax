@@ -150,26 +150,26 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
 
     let xdg_dirs = xdg::BaseDirectories::with_prefix("fastax")?;
     let datadir = xdg_dirs.get_data_home();
-    let _ = xdg_dirs.create_data_directory(&datadir)?;
+    xdg_dirs.create_data_directory(&datadir)?;
 
     match opt.cmd {
         Command::Populate{email} => {
             info!("Downloading data from {}...", NCBI_FTP_HOST);
-            let _ = db::download_taxdump(&datadir, email)?;
+            db::download_taxdump(&datadir, email)?;
             info!("Checking download integrity...");
-            let _ = db::check_integrity(&datadir)?;
+            db::check_integrity(&datadir)?;
             info!("Everything's OK!");
             info!("Extracting dumps...");
-            let _ = db::extract_dump(&datadir)?;
+            db::extract_dump(&datadir)?;
             info!("Initialization of the database.");
-            let _ = db::init_db(&datadir)?;
+            db::init_db(&datadir)?;
             info!("Loading dumps into local database. This may take some time.");
-            let _ = db::insert_divisions(&datadir)?;
-            let _ = db::insert_genetic_codes(&datadir)?;
-            let _ = db::insert_names(&datadir)?;
-            let _ = db::insert_nodes(&datadir)?;
+            db::insert_divisions(&datadir)?;
+            db::insert_genetic_codes(&datadir)?;
+            db::insert_names(&datadir)?;
+            db::insert_nodes(&datadir)?;
             info!("Removing temporary files.");
-            let _ = db::remove_temp_files(&datadir)?;
+            db::remove_temp_files(&datadir)?;
             info!("C'est fini !");
         },
 
@@ -325,7 +325,7 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
 //=============================================================================
 // Database models
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Node {
     tax_id: i64,
     parent_tax_id: i64,
@@ -336,22 +336,6 @@ pub struct Node {
     comments: Option<String>,
     names: HashMap<String, Vec<String>>, // many synonym or common names
     format_string: Option<String>,
-}
-
-impl Node {
-    pub fn new() -> Node {
-        Node{
-            tax_id: 0,
-            parent_tax_id: 0,
-            rank: String::new(),
-            division: String::new(),
-            genetic_code: String::new(),
-            mito_genetic_code: None, // Not all organisms have mitochondria
-            comments: None, // Only a small fraction of nodes have comments
-            names: HashMap::new(),
-            format_string: None
-        }
-    }
 }
 
 impl fmt::Display for Node {
@@ -418,7 +402,7 @@ impl fmt::Display for Node {
 // Utils functions
 
 /// Trim a string and replace all underscore by space. Return a new String.
-fn clean_term(term: &String) -> String {
+fn clean_term(term: &str) -> String {
     term.trim().replace("_", " ")
 }
 

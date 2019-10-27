@@ -75,12 +75,11 @@ pub fn get_nodes(dir: &PathBuf, ids: Vec<i64>) -> Result<Vec<Node>, Box<dyn Erro
     for id in ids.iter() {
         let mut rows = stmt.query(&[id])?;
 
-        let mut node;
+        let mut node: Node = Default::default();
         // Here, row.get has no reason to return an error
         // so row.get_unwrap should be safe
         if let Some(row) = rows.next() {
             let row = row?;
-            node = Node::new();
             node.tax_id = row.get(0);
             node.parent_tax_id = row.get(1);
             node.rank = row.get(2);
@@ -98,7 +97,7 @@ pub fn get_nodes(dir: &PathBuf, ids: Vec<i64>) -> Result<Vec<Node>, Box<dyn Erro
             }
 
             node.names.entry(row.get(6))
-                .or_insert(vec![row.get(7)]);
+                .or_insert_with(|| vec![row.get(7)]);
         } else {
             return Err(From::from(format!("No such ID: {}", id)));
         }
@@ -107,7 +106,7 @@ pub fn get_nodes(dir: &PathBuf, ids: Vec<i64>) -> Result<Vec<Node>, Box<dyn Erro
             let row = row?;
             node.names.entry(row.get(6))
                 .and_modify(|n| n.push(row.get(7)))
-                .or_insert(vec![row.get(7)]);
+                .or_insert_with(|| vec![row.get(7)]);
         }
 
         nodes.push(node);
@@ -152,23 +151,19 @@ pub fn get_children(dir: &PathBuf, id: i64, species_only: bool) -> Result<Vec<No
     let conn = open_db(dir)?;
     let mut stmt = conn.prepare("SELECT tax_id, rank FROM nodes WHERE parent_tax_id=?")?;
 
-    loop {
-        if let Some(id) = temp_ids.pop() {
-            ids.push(id);
+    while let Some(id) = temp_ids.pop() {
+        ids.push(id);
 
-            let mut rows = stmt.query(&[id])?;
-            while let Some(result_row) = rows.next() {
-                let row = result_row?;
-                let rank: String = row.get(1);
+        let mut rows = stmt.query(&[id])?;
+        while let Some(result_row) = rows.next() {
+            let row = result_row?;
+            let rank: String = row.get(1);
 
-                if species_only && rank == "species" {
-                    ids.push(row.get(0));
-                } else {
-                    temp_ids.push(row.get(0))
-                }
+            if species_only && rank == "species" {
+                ids.push(row.get(0));
+            } else {
+                temp_ids.push(row.get(0))
             }
-        } else {
-            break;
         }
     }
 
@@ -185,10 +180,10 @@ pub fn get_children(dir: &PathBuf, id: i64, species_only: bool) -> Result<Vec<No
 pub fn download_taxdump(datadir: &PathBuf, email: String) -> Result<(), Box<dyn Error>> {
     debug!("Contacting {}...", NCBI_FTP_HOST);
     let mut conn = FtpStream::connect(NCBI_FTP_HOST)?;
-    let _ = conn.login("ftp", &email)?;
+    conn.login("ftp", &email)?;
     debug!("Connected and logged.");
 
-    let _ = conn.cwd(NCBI_FTP_PATH)?;
+    conn.cwd(NCBI_FTP_PATH)?;
 
     debug!("Retrieving MD5 sum file...");
     let path = datadir.join("taxdmp.zip.md5");
@@ -197,16 +192,16 @@ pub fn download_taxdump(datadir: &PathBuf, email: String) -> Result<(), Box<dyn 
     io::copy(&mut cursor, &mut file)?;
 
     debug!("Retrieving dumps file...");
-    let _ = conn.retr("taxdmp.zip", |stream| {
+    conn.retr("taxdmp.zip", |stream| {
         let path = datadir.join("taxdmp.zip");
         let mut file = match File::create(path) {
             Err(e) => return Err(FtpError::ConnectionError(e)),
             Ok(f) => f
         };
-        io::copy(stream, &mut file).map_err(|e| FtpError::ConnectionError(e))
+        io::copy(stream, &mut file).map_err(FtpError::ConnectionError)
     })?;
 
-    let _ = conn.quit()?;
+    conn.quit()?;
     debug!("We're done. Ending connection.");
     Ok(())
 }
@@ -217,7 +212,7 @@ pub fn check_integrity(datadir: &PathBuf) -> Result<(), Box<dyn Error>> {
     let mut file = File::open(path)?;
     let mut hasher = Context::new();
     debug!("Computing MD5 sum...");
-    let _ = io::copy(&mut file, &mut hasher)?;
+    io::copy(&mut file, &mut hasher)?;
     let digest = format!("{:x}", hasher.compute());
 
     let path = datadir.join("taxdmp.zip.md5");

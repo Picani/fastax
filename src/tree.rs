@@ -15,7 +15,7 @@ pub struct Tree {
 
 impl Tree {
     /// Create a new Tree containing the given nodes.
-    pub fn new(root_id: i64, nodes: &Vec<Node>) -> Tree {
+    pub fn new(root_id: i64, nodes: &[Node]) -> Tree {
         let mut tree = Tree{
             root: root_id,
             nodes: HashMap::new(),
@@ -27,15 +27,15 @@ impl Tree {
     }
 
     /// Add the given nodes to the Tree.
-    pub fn add_nodes(&mut self, nodes: &Vec<Node>) {
+    pub fn add_nodes(&mut self, nodes: &[Node]) {
         for node in nodes.iter() {
-            if !self.nodes.contains_key(&node.tax_id) {
+            self.nodes.entry(node.tax_id).or_insert({
                 let mut node = node.clone();
                 if node.format_string.is_none() {
                     node.format_string = Some(String::from("%rank: %name"));
                 }
-                self.nodes.insert(node.tax_id, node.clone());
-            }
+                node});
+
 
             if node.tax_id != node.parent_tax_id {
                 self.children.entry(node.parent_tax_id)
@@ -50,7 +50,7 @@ impl Tree {
     }
 
     /// Mark the nodes with this IDs.
-    pub fn mark_nodes(&mut self, taxids: &Vec<i64>) {
+    pub fn mark_nodes(&mut self, taxids: &[i64]) {
         for taxid in taxids.iter() {
             self.marked.insert(*taxid);
         }
@@ -83,13 +83,9 @@ impl Tree {
         if let Some(nodes) = self.children.get(&parent) {
             for node in nodes.iter() {
                 let mut node = node;
-                loop {
-                    if let Some(children) = self.children.get(node) {
-                        if children.len() == 1 && !self.marked.contains(node) {
-                            node = children.iter().next().unwrap();
-                        } else {
-                            break;
-                        }
+                while let Some(children) = self.children.get(node) {
+                    if children.len() == 1 && !self.marked.contains(node) {
+                        node = children.iter().next().unwrap();
                     } else {
                         break;
                     }
@@ -122,8 +118,7 @@ impl Tree {
 
         if let Some(children) = self.children.get(&taxid) {
             n.push_str(",(");
-            let mut children = children.iter();
-            while let Some(child) = children.next() {
+            for child in children.iter() {
                 self.newick_helper(n, *child);
                 n.push(',');
             }
@@ -164,7 +159,7 @@ impl Tree {
             }
 
             // We want to keep the last child
-            let mut children: Vec<i64> = children.iter().map(|r| *r).collect();
+            let mut children: Vec<i64> = children.iter().copied().collect();
             children.sort();
 
             loop {
@@ -184,15 +179,13 @@ impl Tree {
                     None => break
                 };
             }
+        } else if self.marked.contains(&taxid) {
+            s.push_str(&format!("{}\u{2500}\u{2500} {}\n",
+                                prefix,
+                                Style::new().bold().paint(node.to_string())));
         } else {
-            if self.marked.contains(&taxid) {
-                s.push_str(&format!("{}\u{2500}\u{2500} {}\n",
-                                   prefix,
-                                   Style::new().bold().paint(node.to_string())));
-            } else {
-                s.push_str(&format!("{}\u{2500}\u{2500} {}\n",
-                                    prefix, node));
-            }
+            s.push_str(&format!("{}\u{2500}\u{2500} {}\n",
+                                prefix, node));
         }
     }
 }
