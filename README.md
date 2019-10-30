@@ -1,7 +1,7 @@
 Fastax
 ======
 
-![crates.io badge](https://img.shields.io/crates/v/fastax?color=green)
+[![crates.io badge](https://img.shields.io/crates/v/fastax?color=green)][4]
 
 
 Fastax is a command-line tool that makes phylogenetic trees and lineages
