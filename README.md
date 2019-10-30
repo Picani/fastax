@@ -1,6 +1,9 @@
 Fastax
 ======
 
+![crates.io badge](https://img.shields.io/crates/v/fastax?color=green)
+
+
 Fastax is a command-line tool that makes phylogenetic trees and lineages
 from the NCBI Taxonomy database. It uses a local copy of the database,
 which makes it really fast.
@@ -15,8 +18,16 @@ Installation
 ------------
 
 Fastax is written in [Rust][2], which makes it safe, fast and portable. The
-code is managed using [Cargo][3], then all you should have to do is install it
-(see the [Cargo documentation][4]) and run the following:
+code is managed using [Cargo][3] and published on [crates.io][4]. If Cargo
+is already installed, just open a terminal and type:
+
+```
+$ cargo install fastax
+```
+
+Et voilà !
+
+Alternatively, you can compile it from sources:
 
 ```
 $ git clone https://github.com/Picani/fastax.git
@@ -24,8 +35,8 @@ $ cd fastax
 $ cargo build --release
 ```
 
-Et voilà ! The executable file is `target/release/fastax`. Just move it
-somewhere on your `PATH`.
+The executable file is `target/release/fastax`. Just move it somewhere on
+your `PATH`.
 
 Populate the local database
 ---------------------------
@@ -296,4 +307,4 @@ of the MIT license. See the `LICENSE` file for more details.
 [1]: http://evolution.genetics.washington.edu/phylip/newicktree.html
 [2]: https://www.rust-lang.org
 [3]: https://crates.io
-[4]: https://doc.rust-lang.org/cargo/getting-started/installation.html
+[4]: https://crates.io/crates/fastax
