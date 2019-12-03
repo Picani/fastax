@@ -3,7 +3,7 @@ use std::fmt;
 
 use ansi_term::Style;
 
-use Node;
+use crate::Node;
 
 /// A taxonomy tree
 pub struct Tree {

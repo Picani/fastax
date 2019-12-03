@@ -7,9 +7,9 @@ use ftp::{FtpStream, FtpError};
 use md5::Context;
 use rusqlite::{Connection, NO_PARAMS};
 
-use Node;
-use NCBI_FTP_HOST;
-use NCBI_FTP_PATH;
+use crate::Node;
+use crate::NCBI_FTP_HOST;
+use crate::NCBI_FTP_PATH;
 
 /// Open the taxonomy database in this directory.
 fn open_db(dir: &PathBuf) -> Result<Connection, Box<dyn Error>> {
