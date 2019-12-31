@@ -14,312 +14,83 @@ extern crate zip;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
-use std::io;
 use std::path::PathBuf;
 
-use structopt::StructOpt;
 
 static NCBI_FTP_HOST: &str = "ftp.ncbi.nih.gov:21";
 static NCBI_FTP_PATH: &str = "/pub/taxonomy";
 
 mod db;
-mod tree;
+pub mod tree;
 
 
-/// Explore the NCBI Taxonomy database from a local copy.
-#[derive(StructOpt)]
-pub struct Opt {
-    #[structopt(subcommand)]
-    cmd: Command,
-
-    /// Be verbose
-    #[structopt(short = "v", long = "verbose")]
-    verbosity: bool,
-
-    /// Be extremely verbose
-    #[structopt(short = "d", long = "debug")]
-    debug: bool,
-}
-
-#[derive(StructOpt)]
-enum Command {
-    /// Lookup for NCBI Taxonomy ID(s) or scientific name(s) and show the
-    /// results; no search is performed, only exact matches are returned
-    #[structopt(name = "show")]
-    Show {
-        /// The NCBI Taxonomy ID(s) or scientific name(s)
-        terms: Vec<String>,
-
-        /// Output the results as CSV
-        #[structopt(short = "c", long = "csv")]
-        csv: bool,
-    },
-
-    /// Output the lineage of the node(s) (i.e. all nodes in
-    /// the path to the root)
-    #[structopt(name = "lineage")]
-    Lineage {
-        /// The NCBI Taxonomy ID(s) or scientific name(s)
-        terms: Vec<String>,
-
-        /// Keep only the nodes that have a named rank
-        #[structopt(short = "r", long = "ranks")]
-        ranks: bool,
-
-        /// Output the results as CSV; the rows might have different number
-        /// of columns; each cell is of the form rank:scientific name:taxid
-        #[structopt(short = "c", long = "csv")]
-        csv: bool,
-    },
-
-    /// (Re)populate the local taxonomy database by downloading the
-    /// latest release from the NCBI servers
-    #[structopt(name = "populate")]
-    Populate {
-        /// Use that email when connecting to NCBI servers
-        #[structopt(short = "e", long = "email", default_value="plop@example.com")]
-        email: String
-    },
-
-    /// Make a tree from the root to all given IDs
-    #[structopt(name = "tree")]
-    Tree {
-        /// The NCBI Taxonomy IDs or scientific name(s)
-        terms: Vec<String>,
-
-        /// Show all internal nodes
-        #[structopt(short = "i", long = "internal")]
-        internal: bool,
-
-        /// Print the tree in Newick format
-        #[structopt(short = "n", long = "newick")]
-        newick: bool,
-
-        /// Format the nodes with this formatting string (%rank is replaced
-        /// the rank, %name by the scientific name and %taxid by the NCBI
-        /// taxonomy ID)
-        #[structopt(short = "f", long = "format")]
-        format: Option<String>,
-    },
-
-    /// Make a tree with the given ID as root.
-    /// Warning: by default, it doesn't show all internal nodes, which may
-    /// not be what you want! In that case, use -i/--internal.
-    #[structopt(name = "subtree")]
-    SubTree {
-        /// The NCBI Taxonomy ID or scientific name
-        term: String,
-
-        /// Stop at species instead of tips (can be subspecies)
-        #[structopt(short = "s", long = "species")]
-        species: bool,
-
-        /// Show all internal nodes
-        #[structopt(short = "i", long = "internal")]
-        internal: bool,
-
-        /// Print the tree in Newick format
-        #[structopt(short = "n", long = "newick")]
-        newick: bool,
-
-        /// Format the nodes with this formatting string (%rank is replaced
-        /// the rank, %name by the scientific name and %taxid by the NCBI
-        /// taxonomy ID)
-        #[structopt(short = "f", long = "format")]
-        format: Option<String>,
-    },
-}
-
-pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
-    if opt.debug {
-        loggerv::Logger::new()
-            .max_level(log::Level::Debug)
-            .level(true)
-            .init()?;
-        // simple_logger::init_with_level(log::Level::Debug)?;
-   } else if opt.verbosity {
-        loggerv::Logger::new()
-            .max_level(log::Level::Info)
-            .level(true)
-            .init()?;
-        // simple_logger::init_with_level(log::Level::Info)?;
-    } else {
-        loggerv::init_quiet()?;
-        // simple_logger::init_with_level(log::Level::Warn)?;
-    }
-
-    let xdg_dirs = xdg::BaseDirectories::with_prefix("fastax")?;
-    let datadir = xdg_dirs.get_data_home();
-    xdg_dirs.create_data_directory(&datadir)?;
-
-    match opt.cmd {
-        Command::Populate{email} => {
-            info!("Downloading data from {}...", NCBI_FTP_HOST);
-            db::download_taxdump(&datadir, email)?;
-            info!("Checking download integrity...");
-            db::check_integrity(&datadir)?;
-            info!("Everything's OK!");
-            info!("Extracting dumps...");
-            db::extract_dump(&datadir)?;
-            info!("Initialization of the database.");
-            db::init_db(&datadir)?;
-            info!("Loading dumps into local database. This may take some time.");
-            db::insert_divisions(&datadir)?;
-            db::insert_genetic_codes(&datadir)?;
-            db::insert_names(&datadir)?;
-            db::insert_nodes(&datadir)?;
-            info!("Removing temporary files.");
-            db::remove_temp_files(&datadir)?;
-            info!("C'est fini !");
-        },
-
-        Command::Show{terms, csv} => {
-            let ids = term_to_taxids(&datadir, terms)?;
-            let nodes = db::get_nodes(&datadir, ids)?;
-            if csv {
-                let mut wtr = csv::Writer::from_writer(io::stdout());
-
-                wtr.write_record(&["taxid", "scientific_name",
-                                   "rank", "division", "genetic_code",
-                                   "mitochondrial_genetic_code"])?;
-                for node in nodes.iter() {
-                    wtr.serialize((
-                        node.tax_id,
-                        &node.names.get("scientific name").unwrap()[0],
-                        &node.rank,
-                        &node.division,
-                        &node.genetic_code,
-                        &node.mito_genetic_code))?;
-                }
-                wtr.flush()?;
-
-            } else {
-                for node in nodes.iter() {
-                    println!("{}", node);
-                }
-            }
-        },
-
-        Command::Lineage{terms, ranks, csv} => {
-            let ids = term_to_taxids(&datadir, terms)?;
-            let lineages = ids.iter()
-                    .map(|id| db::get_lineage(&datadir, *id));
-
-            if csv {
-                let mut wtr = csv::WriterBuilder::new()
-                    .flexible(true)
-                    .from_writer(io::stdout());
-
-                for lineage in lineages {
-                    let nodes = lineage?;
-                    let row = nodes.iter()
-                        .filter(|node| !ranks || node.rank != "no rank")
-                        .map(|node| format!("{}:{}:{}",
-                                            &node.rank,
-                                            &node.names.get("scientific name").unwrap()[0],
-                                            node.tax_id))
-                        .collect::<Vec<String>>();
-                    wtr.serialize(row)?;
-                }
-                wtr.flush()?;
-            } else {
-                for lineage in lineages {
-                    let nodes = lineage?
-                        .iter()
-                        .filter(|node| !ranks || node.rank != "no rank")
-                        .map(|node| format!("{}: {} (taxid: {})",
-                                            &node.rank,
-                                            &node.names.get("scientific name").unwrap()[0],
-                                            node.tax_id))
-                        .collect::<Vec<String>>();
-
-                    for (i, node) in nodes.iter().enumerate() {
-                        if i == 0 { println!("root"); }
-                        else if i == nodes.len() - 1 {
-                            println!("{}\u{2514}\u{2500}\u{2500} {}",
-                                     std::iter::repeat(" ").take(i+1).collect::<String>(),
-                                     node);
-                        } else {
-                            println!("{}\u{2514}\u{252C}\u{2500} {}",
-                                     std::iter::repeat(" ").take(i+1).collect::<String>(),
-                                     node);
-                        }
-                    }
-                }
-            }
-        },
-
-        Command::Tree{terms, internal, newick, format} => {
-            let ids = term_to_taxids(&datadir, terms)?;
-            let mut lineages = ids.iter()
-                .map(|id| db::get_lineage(&datadir, *id))
-                .collect::<Result<Vec<_>, _>>()?;
-            lineages.sort_by(|a, b| b.len().cmp(&a.len()));
-
-            if let Some(format_string) = format {
-                for lineage in lineages.iter_mut() {
-                    for mut node in lineage.iter_mut() {
-                        node.format_string = Some(format_string.clone());
-                    }
-                }
-            } else if newick {
-                // The default formatting for tree is not really useful
-                // for newick trees
-                for lineage in lineages.iter_mut() {
-                    for mut node in lineage.iter_mut() {
-                        node.format_string = Some(String::from("%name"));
-                    }
-                }
-            }
-
-            // The root taxid is 1
-            let mut tree = tree::Tree::new(1, &lineages.pop().unwrap());
-            for lineage in lineages.iter() {
-                tree.add_nodes(lineage);
-            }
-            tree.mark_nodes(&ids);
-
-            if !internal {
-                tree.simplify();
-            }
-
-            if newick {
-                println!("{}", tree.to_newick());
-            } else {
-                println!("{}", tree);
-            }
-        },
-
-        Command::SubTree{term, species, internal, newick, format} => {
-            let id = term_to_taxids(&datadir, vec![term])?[0];
-            let mut nodes = db::get_children(&datadir, id, species)?;
-            if let Some(format_string) = format {
-                for mut node in nodes.iter_mut() {
-                    node.format_string = Some(format_string.clone());
-                }
-            } else if newick {
-                // The default formatting for tree is node really useful
-                // for newick trees
-                for mut node in nodes.iter_mut() {
-                    node.format_string = Some(String::from("%name"));
-                }
-            }
-
-            let mut tree = tree::Tree::new(id, &nodes);
-
-            if !internal {
-                tree.simplify();
-            }
-
-            if newick {
-                println!("{}", tree.to_newick());
-            } else {
-                println!("{}", tree);
-            }
-        }
-    }
-
+/// Populate the local taxonomy DB at `datadir` while sending `email`
+/// to the NCBI FTP servers.
+pub fn populate_db(datadir: &PathBuf, email: String) -> Result<(), Box<dyn Error>> {
+    info!("Downloading data from {}...", NCBI_FTP_HOST);
+    db::download_taxdump(&datadir, email)?;
+    info!("Checking download integrity...");
+    db::check_integrity(&datadir)?;
+    info!("Everything's OK!");
+    info!("Extracting dumps...");
+    db::extract_dump(&datadir)?;
+    info!("Initialization of the database.");
+    db::init_db(&datadir)?;
+    info!("Loading dumps into local database. This may take some time.");
+    db::insert_divisions(&datadir)?;
+    db::insert_genetic_codes(&datadir)?;
+    db::insert_names(&datadir)?;
+    db::insert_nodes(&datadir)?;
+    info!("Removing temporary files.");
+    db::remove_temp_files(&datadir)?;
+    info!("C'est fini !");
     Ok(())
+}
+
+/// Fetch from the database the nodes that correspond to the given `terms`
+/// and return them. If any of the term does not correspond to a Node, an
+/// error is returned.
+pub fn get_nodes(datadir: &PathBuf, terms: &[String]) -> Result<Vec<Node>, Box<dyn Error>> {
+    let ids = term_to_taxids(&datadir, terms)?;
+    db::get_nodes(&datadir, ids)
+}
+
+/// Make the lineage for each of the given `terms`. If any of them does not
+/// correspond to a Node, an error is returned.
+pub fn make_lineages(datadir: &PathBuf, terms: &[String]) -> Result<Vec<Vec<Node>>, Box<dyn Error>> {
+    let ids = term_to_taxids(&datadir, terms)?;
+    // From https://stackoverflow.com/a/26370894
+    let lineages: Result<Vec<_>, _> = ids.iter()
+        .map(|id| db::get_lineage(&datadir, *id))
+        .collect();
+    lineages
+}
+
+/// Make the tree with the Root as root and the Nodes corresponding to
+/// the given `terms` as leaves. If any of them does not correspond to
+/// a Node, an error is returned.
+pub fn make_tree(datadir: &PathBuf, terms: &[String]) -> Result<tree::Tree, Box<dyn Error>> {
+    let ids = term_to_taxids(&datadir, terms)?;
+    let mut lineages = make_lineages(&datadir, terms)?;
+    lineages.sort_by(|a, b| b.len().cmp(&a.len()));
+
+    // The root taxid is 1
+    let mut tree = tree::Tree::new(1, &lineages.pop().unwrap());
+    for lineage in lineages.iter() {
+        tree.add_nodes(lineage);
+    }
+    tree.mark_nodes(&ids);
+    Ok(tree)
+}
+
+/// Make the subtree with the Node corresponding to the given `term` as root,
+/// or return an error if no Node is found.
+/// If `species` is true, then doesn't include nodes below species (such as
+/// subspecies) in the resulting tree.
+pub fn make_subtree(datadir: &PathBuf, term: &str, species: bool) -> Result<tree::Tree, Box<dyn Error>> {
+    let id = term_to_taxids(&datadir, &[String::from(term)])?[0];
+    let nodes = db::get_children(&datadir, id, species)?;
+    Ok(tree::Tree::new(id, &nodes))
 }
 
 //=============================================================================
@@ -327,15 +98,15 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
 
 #[derive(Debug, Clone, Default)]
 pub struct Node {
-    tax_id: i64,
+    pub tax_id: i64,
     parent_tax_id: i64,
-    rank: String,
-    division: String,
-    genetic_code: String,
-    mito_genetic_code: Option<String>,
-    comments: Option<String>,
-    names: HashMap<String, Vec<String>>, // many synonym or common names
-    format_string: Option<String>,
+    pub rank: String,
+    pub division: String,
+    pub genetic_code: String,
+    pub mito_genetic_code: Option<String>,
+    pub comments: Option<String>,
+    pub names: HashMap<String, Vec<String>>, // many synonym or common names
+    pub format_string: Option<String>,
 }
 
 impl fmt::Display for Node {
