@@ -56,6 +56,13 @@ impl Tree {
         }
     }
 
+    /// Set the format string for all nodes.
+    pub fn set_format_string(&mut self, format_string: String) {
+        for node in self.nodes.values_mut() {
+            node.format_string = Some(format_string.clone());
+        }
+    }
+
     /// Simplify the tree by removing all nodes that have only one child
     /// *and* are not marked.
     pub fn simplify(&mut self) {
