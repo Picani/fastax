@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.2] -- 2019-12-31
+### Fixed
+- Generated Newick trees had bad internal nodes in some situation.
+
 ## [1.3.1] -- 2019-12-31
 ### Changed
 - Code reorganization.
