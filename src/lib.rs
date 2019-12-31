@@ -183,7 +183,7 @@ fn clean_term(term: &str) -> String {
 /// ID is fetched from the database. The input order is kept.
 /// Return either a vector of taxids or an error (for example, one scientific
 /// name cannot be found).
-fn term_to_taxids(datadir: &PathBuf, terms: Vec<String>) -> Result<Vec<i64>, Box<dyn Error>> {
+fn term_to_taxids(datadir: &PathBuf, terms: &[String]) -> Result<Vec<i64>, Box<dyn Error>> {
     // We want to keep the input order. This makes the code slightly
     // more complicated.
     let mut ids: Vec<i64> = vec![];
