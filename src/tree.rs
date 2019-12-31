@@ -105,9 +105,9 @@ impl Tree {
 
     /// Return a Newick representation of the tree.
     pub fn to_newick(&self) -> String {
-        let mut n = String::from("(");
+        let mut n = String::new();
         self.newick_helper(&mut n, self.root);
-        n.push_str(");");
+        n.push(';');
         n
     }
 
@@ -121,9 +121,9 @@ impl Tree {
         // unwrap are safe here because of the way we build the tree
         // and the nodes.
         let node = self.nodes.get(&taxid).unwrap();
-        n.push_str(&format!("{}", node));
 
         if let Some(children) = self.children.get(&taxid) {
+            n.push_str(&format!("({}", node)); // Mind the parenthesis
             n.push_str(",(");
             for child in children.iter() {
                 self.newick_helper(n, *child);
@@ -132,7 +132,12 @@ impl Tree {
 
             // After iterating through the children, a comma left
             let _ = n.pop();
-            n.push(')');
+            // two closing parenthesis:
+            // - one for the last child tree,
+            // - another for the parent
+            n.push_str("))");
+        } else {
+            n.push_str(&format!("{}", node)); // Mind the absent parenthesis
         }
     }
 
