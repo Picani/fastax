@@ -157,7 +157,7 @@ impl Tree {
                 s.push_str(&format!("{}\u{2500}\u{252C}\u{2500} {}\n",
                                    prefix, node));
             }
-            let mut prefix = prefix.clone();
+            let mut prefix = prefix;
             prefix.pop();
             if was_first_child {
                 prefix.push('\u{2502}');
