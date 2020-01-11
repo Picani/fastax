@@ -213,7 +213,20 @@ impl Tree {
 impl fmt::Display for Tree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = String::new();
-        self.print_tree_helper(&mut s, self.root, String::from(" "), false);
+        let root = self.nodes.get(&self.root).unwrap();
+        s.push_str(&format!("{}\n", root.to_string()));
+
+        let root_children = self.children.get(&self.root).unwrap();
+        let mut first_child = true;
+        for (i, child) in root_children.iter().enumerate() {
+            if root_children.len() == 1 || i == root_children.len() - 1 {
+                self.print_tree_helper(&mut s, *child, String::from("\u{2514}"), first_child);
+            } else {
+                self.print_tree_helper(&mut s, *child, String::from("\u{251C}"), first_child);
+            }
+            first_child = false;
+        }
+
         write!(f, "{}", s)
     }
 }

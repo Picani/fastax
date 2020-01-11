@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Changed
 - When outputting a tree in Newick, if the root has only one child,
   then the root is removed from the output.
+- The pretty-printing of a tree now effectively puts the root at the root.
 
 ## [1.3.2] -- 2019-12-31
 ### Fixed
