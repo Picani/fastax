@@ -104,9 +104,17 @@ impl Tree {
     }
 
     /// Return a Newick representation of the tree.
+    /// If the root has only one child, we remove the root from the
+    /// resulting tree.
     pub fn to_newick(&self) -> String {
         let mut n = String::new();
-        self.newick_helper(&mut n, self.root);
+
+        if self.children.get(&1).unwrap().len() == 1 {
+            let root = self.children.get(&1).unwrap().iter().next().unwrap();
+            self.newick_helper(&mut n, *root);
+        } else {
+            self.newick_helper(&mut n, self.root);
+        }
         n.push(';');
         n
     }
