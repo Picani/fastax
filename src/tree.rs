@@ -109,7 +109,7 @@ impl Tree {
     pub fn to_newick(&self) -> String {
         let mut n = String::new();
 
-        if self.children.get(&1).unwrap().len() == 1 {
+        if self.children.get(&self.root).unwrap().len() == 1 {
             let root = self.children.get(&1).unwrap().iter().next().unwrap();
             self.newick_helper(&mut n, *root);
         } else {
