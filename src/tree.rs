@@ -217,14 +217,17 @@ impl fmt::Display for Tree {
         s.push_str(&format!("{}\n", root.to_string()));
 
         let root_children = self.children.get(&self.root).unwrap();
-        let mut first_child = true;
-        for (i, child) in root_children.iter().enumerate() {
-            if root_children.len() == 1 || i == root_children.len() - 1 {
-                self.print_tree_helper(&mut s, *child, String::from("\u{2514}"), first_child);
-            } else {
-                self.print_tree_helper(&mut s, *child, String::from("\u{251C}"), first_child);
+        if root_children.len() == 1 {
+            let child = root_children.iter().next().unwrap();
+            self.print_tree_helper(&mut s, *child, String::from("\u{2514}"), false);
+        } else {
+            for (i, child) in root_children.iter().enumerate() {
+                if i == root_children.len() - 1 {
+                    self.print_tree_helper(&mut s, *child, String::from("\u{2514}"), false);
+                } else {
+                    self.print_tree_helper(&mut s, *child, String::from("\u{251C}"), true);
+                }
             }
-            first_child = false;
         }
 
         write!(f, "{}", s)
