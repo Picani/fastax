@@ -318,6 +318,10 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
         Command::LCA{terms, csv} => {
             let nodes = fastax::get_nodes(&datadir, &terms)?;
 
+            if nodes.len() < 2 {
+                error!("The lca command need at least two taxa.");
+            }
+
             let mut lcas: Vec<[fastax::Node; 3]> = vec![];
             for pair in nodes.iter().combinations(2) {
                 let node1 = pair[0];
