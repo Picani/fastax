@@ -47,6 +47,15 @@ pub fn populate_db(datadir: &PathBuf, email: String) -> Result<(), Box<dyn Error
     Ok(())
 }
 
+/// Fetch from the database the node that corresponds to the given `term`
+/// and return it. If the term does not correspond to a Node, an error
+/// is returned.
+pub fn get_node(datadir: &PathBuf, term: String) -> Result<Node, Box<dyn Error>> {
+    let ids = term_to_taxids(&datadir, &[term])?;
+    let node = db::get_nodes(&datadir, ids)?;
+    Ok(node[0].clone())
+}
+
 /// Fetch from the database the nodes that correspond to the given `terms`
 /// and return them. If any of the term does not correspond to a Node, an
 /// error is returned.
@@ -55,23 +64,20 @@ pub fn get_nodes(datadir: &PathBuf, terms: &[String]) -> Result<Vec<Node>, Box<d
     db::get_nodes(&datadir, ids)
 }
 
-/// Make the lineage for each of the given `terms`. If any of them does not
-/// correspond to a Node, an error is returned.
-pub fn make_lineages(datadir: &PathBuf, terms: &[String]) -> Result<Vec<Vec<Node>>, Box<dyn Error>> {
-    let ids = term_to_taxids(&datadir, terms)?;
+/// Make the lineage for each of the given `nodes`.
+pub fn make_lineages(datadir: &PathBuf, nodes: &[Node]) -> Result<Vec<Vec<Node>>, Box<dyn Error>> {
     // From https://stackoverflow.com/a/26370894
-    let lineages: Result<Vec<_>, _> = ids.iter()
-        .map(|id| db::get_lineage(&datadir, *id))
+    let lineages: Result<Vec<_>, _> = nodes.iter()
+        .map(|node| db::get_lineage(&datadir, node.tax_id))
         .collect();
     lineages
 }
 
-/// Make the tree with the Root as root and the Nodes corresponding to
-/// the given `terms` as leaves. If any of them does not correspond to
-/// a Node, an error is returned.
-pub fn make_tree(datadir: &PathBuf, terms: &[String]) -> Result<tree::Tree, Box<dyn Error>> {
-    let ids = term_to_taxids(&datadir, terms)?;
-    let mut lineages = make_lineages(&datadir, terms)?;
+/// Make the tree with the Root as root and the given `nodes` as leaves.
+/// Any given node that is not a leaf (because another given node is in
+/// its sub-tree) is kept is the returned tree.
+pub fn make_tree(datadir: &PathBuf, nodes: &[Node]) -> Result<tree::Tree, Box<dyn Error>> {
+    let mut lineages = make_lineages(&datadir, nodes)?;
     lineages.sort_by(|a, b| b.len().cmp(&a.len()));
 
     // The root taxid is 1
@@ -79,18 +85,17 @@ pub fn make_tree(datadir: &PathBuf, terms: &[String]) -> Result<tree::Tree, Box<
     for lineage in lineages.iter() {
         tree.add_nodes(lineage);
     }
+    let ids: Vec<_> = nodes.iter().map(|node| node.tax_id).collect();
     tree.mark_nodes(&ids);
     Ok(tree)
 }
 
-/// Make the subtree with the Node corresponding to the given `term` as root,
-/// or return an error if no Node is found.
-/// If `species` is true, then doesn't include nodes below species (such as
-/// subspecies) in the resulting tree.
-pub fn make_subtree(datadir: &PathBuf, term: &str, species: bool) -> Result<tree::Tree, Box<dyn Error>> {
-    let id = term_to_taxids(&datadir, &[String::from(term)])?[0];
-    let nodes = db::get_children(&datadir, id, species)?;
-    Ok(tree::Tree::new(id, &nodes))
+/// Make the sub-tree with the given `root` as root.
+/// If `species` is true, then doesn't include in the resulting tree
+/// the nodes that are below nodes ranked as species (such as subspecies).
+pub fn make_subtree(datadir: &PathBuf, root: Node, species: bool) -> Result<tree::Tree, Box<dyn Error>> {
+    let nodes = db::get_children(&datadir, root.tax_id, species)?;
+    Ok(tree::Tree::new(root.tax_id, &nodes))
 }
 
 //=============================================================================

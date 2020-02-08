@@ -251,17 +251,20 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
         },
 
         Command::Lineage{terms, ranks, csv} => {
-            let lineages = fastax::make_lineages(&datadir, &terms)?;
+            let nodes = fastax::get_nodes(&datadir, &terms)?;
+            let lineages = fastax::make_lineages(&datadir, &nodes)?;
             show_lineages(lineages, ranks, csv)?;
         },
 
         Command::Tree{terms, internal, newick, format} => {
-            let tree = fastax::make_tree(&datadir, &terms)?;
+            let nodes = fastax::get_nodes(&datadir, &terms)?;
+            let tree = fastax::make_tree(&datadir, &nodes)?;
             show_tree(tree, internal, newick, format)?;
         },
 
         Command::SubTree{term, species, internal, newick, format} => {
-            let tree = fastax::make_subtree(&datadir, &term, species)?;
+            let root = fastax::get_node(&datadir, term)?;
+            let tree = fastax::make_subtree(&datadir, root, species)?;
             show_tree(tree, internal, newick, format)?;
         }
     }
