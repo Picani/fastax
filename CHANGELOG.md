@@ -5,7 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-## Changed
+### Added
+- `lca` command that takes two or more nodes and get their last common
+  ancestor (LCA).
+
+### Changed
 - When outputting a tree in Newick, if the root has only one child,
   then the root is removed from the output.
 - The pretty-printing of a tree now effectively puts the root at the root.
