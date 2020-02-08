@@ -8,8 +8,8 @@ use crate::Node;
 /// A taxonomy tree
 pub struct Tree {
     root: i64,
-    nodes: HashMap<i64, Node>,
-    children: HashMap<i64, HashSet<i64>>,
+    pub nodes: HashMap<i64, Node>,
+    pub children: HashMap<i64, HashSet<i64>>,
     marked: HashSet<i64>
 }
 

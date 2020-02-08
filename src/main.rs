@@ -7,6 +7,7 @@ use std::error::Error;
 use std::io;
 use std::process;
 
+use itertools::Itertools;
 use structopt::StructOpt;
 
 
@@ -114,6 +115,18 @@ enum Command {
         #[structopt(short = "f", long = "format")]
         format: Option<String>,
     },
+
+    /// Return the Last Common Ancestor (LCA) between the taxa.
+    /// If more than two taxa are given, return the LCA for all pairs.
+    #[structopt(name = "lca")]
+    LCA {
+        /// The NCBI Taxonomy IDs or scientific names
+        terms: Vec<String>,
+
+        /// Print the results in CSV; the first row contains the headers
+        #[structopt(short = "c", long = "csv")]
+        csv: bool,
+    },
 }
 
 /// Pretty-print the `nodes`. If `csv` is true, print the node as CSV.
@@ -217,6 +230,40 @@ fn show_tree(mut tree: fastax::tree::Tree, internal: bool, newick: bool, format:
     Ok(())
 }
 
+/// Pretty-print the Last Common Ancestors (`lcas`).
+/// If `csv` is true, then print the results as CSV, the first row as
+/// headers.
+fn show_lcas(lcas: Vec<[fastax::Node; 3]>, csv: bool) -> Result<(), Box<dyn Error>> {
+    let mut wtr = csv::WriterBuilder::new()
+        .from_writer(io::stdout());
+
+    if csv {
+        wtr.write_record(&[
+            "name1", "taxid1",
+            "name2", "taxid2",
+            "lca_name", "lca_taxid"
+        ])?;
+    }
+
+    for [node1, node2, lca] in lcas {
+        let name1 = &node1.names.get("scientific name").unwrap()[0];
+        let name2 = &node2.names.get("scientific name").unwrap()[0];
+        let lca_name = &lca.names.get("scientific name").unwrap()[0];
+
+        if csv {
+            wtr.write_record(&[
+                name1, &node1.tax_id.to_string(),
+                name2, &node2.tax_id.to_string(),
+                lca_name, &lca.tax_id.to_string()
+            ])?;
+        } else {
+            println!("LCA({}, {}) = {}", name1, name2, lca_name);
+        }
+    }
+    wtr.flush()?;
+    Ok(())
+}
+
 /// Run fastax!!!
 pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
     if opt.debug {
@@ -266,7 +313,21 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
             let root = fastax::get_node(&datadir, term)?;
             let tree = fastax::make_subtree(&datadir, root, species)?;
             show_tree(tree, internal, newick, format)?;
-        }
+        },
+
+        Command::LCA{terms, csv} => {
+            let nodes = fastax::get_nodes(&datadir, &terms)?;
+
+            let mut lcas: Vec<[fastax::Node; 3]> = vec![];
+            for pair in nodes.iter().combinations(2) {
+                let node1 = pair[0];
+                let node2 = pair[1];
+                let lca = fastax::get_lca(&datadir, &node1, &node2)?;
+                lcas.push([node1.clone(), node2.clone(), lca]);
+            }
+
+            show_lcas(lcas, csv)?;
+        },
     }
 
     Ok(())

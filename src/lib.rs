@@ -98,6 +98,24 @@ pub fn make_subtree(datadir: &PathBuf, root: Node, species: bool) -> Result<tree
     Ok(tree::Tree::new(root.tax_id, &nodes))
 }
 
+/// Get the Last Common Ancestor (LCA) of `node1` and `node2`.
+pub fn get_lca(datadir: &PathBuf, node1: &Node, node2: &Node) -> Result<Node, Box<dyn Error>> {
+    let node1 = node1.clone();
+    let node2 = node2.clone();
+    let mut tree = make_tree(datadir, &[node1, node2])?;
+    tree.simplify();
+
+    // Two cases here: the LCA is the root, or the LCA is the root's child.
+    let lca_id =
+        if tree.children.get(&1).unwrap().len() == 2 {
+            &1
+        } else {
+            tree.children.get(&1).unwrap().iter().next().unwrap()
+        };
+    let lca = tree.nodes.get(lca_id).unwrap();
+    Ok(lca.clone())
+}
+
 //=============================================================================
 // Database models
 
