@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.4.0] -- 2020-02-09
 ### Added
 - `lca` command that takes two or more nodes and get their last common
   ancestor (LCA).
@@ -13,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - When outputting a tree in Newick, if the root has only one child,
   then the root is removed from the output.
 - The pretty-printing of a tree now effectively puts the root at the root.
+
+### Fixed
+- Bad tree pretty-printing.
+- Crash when outputting a subtree in Newick.
 
 ## [1.3.2] -- 2019-12-31
 ### Fixed
@@ -53,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of a working application.
 
 [Unreleased]: https://github.com/Picani/fastax
+[1.4.0]: https://github.com/Picani/fastax/releases/tag/v1.4.0
 [1.3.2]: https://github.com/Picani/fastax/releases/tag/v1.3.2
 [1.3.1]: https://github.com/Picani/fastax/releases/tag/v1.3.1
 [1.3.0]: https://github.com/Picani/fastax/releases/tag/v1.3.0
