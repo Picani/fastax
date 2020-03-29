@@ -5,8 +5,6 @@ TODO
 
 * Add a REST interface.
 
-* Compute the least-common ancestor (by pairs if more than 2 taxa).
-
 * Add tests.
 
 * Search (with restriction on ranks).
@@ -20,3 +18,9 @@ TODO
 * Add support for `accession2taxid`.
 
 * Add info about the database (number of nodes, species, time of last update, size in Mb).
+
+* Remove nodes cloning in the code.
+
+* Add a benchmark (because why not).
+
+* Add a documentation, to clean up the README.
