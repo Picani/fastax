@@ -290,8 +290,8 @@ CREATE TABLE IF NOT EXISTS nodes (
     comment TEXT,
 
     FOREIGN KEY(division_id) REFERENCES divisions(id)
-    FOREIGN KEY(genetic_code_id) REFERENCES geneticCodes(code_id)
-    FOREIGN KEY(mito_genetic_code_id) REFERENCES geneticCodes(code_id)
+    FOREIGN KEY(genetic_code_id) REFERENCES geneticCodes(id)
+    FOREIGN KEY(mito_genetic_code_id) REFERENCES geneticCodes(id)
 );
 
 CREATE TABLE IF NOT EXISTS names (
