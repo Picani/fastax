@@ -11,16 +11,16 @@ categories = ["command-line-utilities", "science"]
 keywords = ["cli", "bioinformatics", "phylogenetics"]
 
 [dependencies]
-ansi_term = "0.11"
+ansi_term = "0.12"
 csv = "1"
 exitcode = "1"
 ftp = "3"
-itertools = "0.8"
+itertools = "0.10"
 log = "0.4"
 loggerv = "0.7"
-md5 = "0.6"
-rusqlite = "0.16"
+md5 = "0.7"
+rusqlite = "0.25"
 # simple_logger = "1.0.1"
-structopt = "0.2"
+structopt = "0.3"
 xdg = "^2"
 zip = "0.5"

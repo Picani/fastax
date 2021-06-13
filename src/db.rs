@@ -5,7 +5,7 @@ use std::io;
 
 use ftp::{FtpStream, FtpError};
 use md5::Context;
-use rusqlite::{Connection, NO_PARAMS};
+use rusqlite::Connection;
 
 use crate::Node;
 use crate::NCBI_FTP_HOST;
@@ -34,12 +34,10 @@ pub fn get_taxids(dir: &PathBuf, names: Vec<String>) -> Result<Vec<i64>, Box<dyn
 
     for name in names.iter() {
         let mut rows = stmt.query(&[name])?;
-
-        if let Some(row) = rows.next() {
-            // Here, row.get has no reason to return an error
-            // so row.get_unwrap should be safe
-            let row = row?;
-            taxids.push(row.get(0));
+        let row = rows.next()?;
+        if let Some(row) = row {
+            // With the right database, get_unwrap should be safe.
+            taxids.push(row.get_unwrap(0));
         } else {
             return Err(From::from(format!("No such scientific name: {}", name)));
         }
@@ -76,37 +74,44 @@ pub fn get_nodes(dir: &PathBuf, ids: Vec<i64>) -> Result<Vec<Node>, Box<dyn Erro
         let mut rows = stmt.query(&[id])?;
 
         let mut node: Node = Default::default();
-        // Here, row.get has no reason to return an error
-        // so row.get_unwrap should be safe
-        if let Some(row) = rows.next() {
-            let row = row?;
-            node.tax_id = row.get(0);
-            node.parent_tax_id = row.get(1);
-            node.rank = row.get(2);
-            node.division = row.get(3);
-            node.genetic_code = row.get(4);
 
-            let mito_code: String = row.get(5);
+        let row = rows.next()?;
+        if let Some(row) = row {
+            // With the right database, get_unwrap should be safe.
+            node.tax_id = row.get_unwrap(0);
+            node.parent_tax_id = row.get_unwrap(1);
+            node.rank = row.get_unwrap(2);
+            node.division = row.get_unwrap(3);
+            node.genetic_code = row.get_unwrap(4);
+
+            let mito_code: String = row.get_unwrap(5);
             if mito_code != "Unspecified" {
-                node.mito_genetic_code = row.get(5);
+                node.mito_genetic_code = row.get_unwrap(5);
             }
 
-            let comments: String = row.get(8);
+            let comments: String = row.get_unwrap(8);
             if !comments.is_empty() {
                 node.comments = Some(comments);
             }
 
-            node.names.entry(row.get(6))
-                .or_insert_with(|| vec![row.get(7)]);
+            node.names.entry(row.get_unwrap(6))
+                .or_insert_with(|| vec![row.get_unwrap(7)]);
         } else {
             return Err(From::from(format!("No such ID: {}", id)));
         }
 
-        while let Some(row) = rows.next() {
-            let row = row?;
-            node.names.entry(row.get(6))
-                .and_modify(|n| n.push(row.get(7)))
-                .or_insert_with(|| vec![row.get(7)]);
+        loop {
+            let row = rows.next()?;
+
+            if let Some(row) = row {
+                // With the right database, get_unwrap should be safe.
+                node.names.entry(row.get_unwrap(6))
+                    .and_modify(|n| n.push(row.get_unwrap(7)))
+                    .or_insert_with(|| vec![row.get_unwrap(7)]);
+
+            } else {
+                break;
+            }
         }
 
         nodes.push(node);
@@ -125,7 +130,7 @@ pub fn get_lineage(dir: &PathBuf, id: i64) -> Result<Vec<Node>, Box<dyn Error>> 
     let mut ids = vec![id];
     let mut stmt = conn.prepare("SELECT parent_tax_id FROM nodes WHERE tax_id=?")?;
     loop {
-        let parent_id = stmt.query_row(&[id], |row| {row.get(0)})?;
+        let parent_id = stmt.query_row([id], |row| {row.get(0)})?;
         ids.push(parent_id);
         id = parent_id;
 
@@ -154,15 +159,21 @@ pub fn get_children(dir: &PathBuf, id: i64, species_only: bool) -> Result<Vec<No
     while let Some(id) = temp_ids.pop() {
         ids.push(id);
 
-        let mut rows = stmt.query(&[id])?;
-        while let Some(result_row) = rows.next() {
-            let row = result_row?;
-            let rank: String = row.get(1);
+        let mut rows = stmt.query([id])?;
+        loop {
+            let row = rows.next()?;
+            if let Some(row) = row {
+                // With the right database, get_unwrap should be safe.
+                let rank: String = row.get_unwrap(1);
 
-            if species_only && rank == "species" {
-                ids.push(row.get(0));
+                if species_only && rank == "species" {
+                    ids.push(row.get_unwrap(0));
+                } else {
+                    temp_ids.push(row.get_unwrap(0))
+                }
+
             } else {
-                temp_ids.push(row.get(0))
+                break;
             }
         }
     }
@@ -236,7 +247,7 @@ pub fn extract_dump(datadir: &PathBuf) -> Result<(), Box<dyn Error>> {
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
-        let outpath = datadir.join(file.sanitized_name());
+        let outpath = datadir.join(file.mangled_name());
 
         debug!("Extracted {}", outpath.as_path().display());
         let mut outfile = File::create(&outpath)?;
@@ -359,8 +370,8 @@ pub fn insert_names(datadir: &PathBuf) -> Result<(), Box<dyn Error>> {
     debug!("Done inserting names.");
 
     debug!("Creating names indexes.");
-    conn.execute("CREATE INDEX idx_names_tax_id ON names(tax_id);", NO_PARAMS)?;
-    conn.execute("CREATE INDEX idx_names_name ON names(name);", NO_PARAMS)?;
+    conn.execute("CREATE INDEX idx_names_tax_id ON names(tax_id);", [])?;
+    conn.execute("CREATE INDEX idx_names_name ON names(name);", [])?;
 
     Ok(())
 }
@@ -496,7 +507,7 @@ pub fn insert_nodes(datadir: &PathBuf) -> Result<(), Box<dyn Error>> {
     debug!("Done inserting nodes.");
 
     debug!("Creating nodes indexes.");
-    conn.execute("CREATE INDEX idx_nodes_parent_id ON nodes(parent_tax_id);", NO_PARAMS)?;
+    conn.execute("CREATE INDEX idx_nodes_parent_id ON nodes(parent_tax_id);", [])?;
 
     Ok(())
 }

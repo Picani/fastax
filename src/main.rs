@@ -342,7 +342,7 @@ fn main() {
     let opt = Opt::from_args();
 
     if let Err(e) = run(opt) {
-        if e.description().contains("no such table") {
+        if e.to_string().contains("no such table") {
             error!("The database is probably not initialized.\nTry running: 'fastax populate'");
         } else {
             error!("{}", e);
