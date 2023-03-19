@@ -5,6 +5,7 @@ extern crate fastax;
 
 use std::error::Error;
 use std::io;
+use std::path::PathBuf;
 use std::process;
 
 use itertools::Itertools;
@@ -63,7 +64,12 @@ enum Command {
     Populate {
         /// Use that email when connecting to NCBI servers
         #[structopt(short = "e", long = "email", default_value="plop@example.com")]
-        email: String
+        email: String,
+
+        /// Don't download the dump and use that file instead; the file
+        /// should be exactly the same as 'ftp.ncbi.nih.gov/pub/taxonomy/taxdmp.zip'
+        #[structopt(long = "taxdmp")]
+        taxdmp: Option<PathBuf>
     },
 
     /// Make a tree from the root to all given IDs
@@ -290,8 +296,12 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
     let db = fastax::db::DB::new(&dbpath)?;
 
     match opt.cmd {
-        Command::Populate{email} => {
-            fastax::populate_db(&datadir, email)?;
+        Command::Populate{email, taxdmp} => {
+            if let Some(taxdmp) = taxdmp {
+                db.populate(&taxdmp)?;
+            } else {
+                fastax::populate_db(&datadir, email)?;
+            }
         },
 
         Command::Show{terms, csv} => {
