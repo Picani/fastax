@@ -1,6 +1,6 @@
 extern crate ansi_term;
 extern crate csv;
-extern crate ftp;
+extern crate suppaftp;
 #[macro_use]
 extern crate log;
 extern crate loggerv;

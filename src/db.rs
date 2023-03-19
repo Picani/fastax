@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::fs::{File, read_to_string};
 use std::io;
 
-use ftp::{FtpStream, FtpError};
+use suppaftp::{FtpStream, FtpError};
 use md5::Context;
 use rusqlite::Connection;
 
@@ -440,10 +440,16 @@ pub fn download_taxdump(datadir: &PathBuf, email: String) -> Result<(), Box<dyn 
     conn.cwd(NCBI_FTP_PATH)?;
 
     debug!("Retrieving MD5 sum file...");
-    let path = datadir.join("taxdmp.zip.md5");
-    let mut file = File::create(path)?;
-    let mut cursor = conn.simple_retr("taxdmp.zip.md5")?;
-    io::copy(&mut cursor, &mut file)?;
+    conn.retr("taxdmp.zip.md5", move |stream| {
+        let path = datadir.join("taxdmp.zip.md5");
+        let mut file = match File::create(path) {
+            Err(e) => return Err(FtpError::ConnectionError(e)),
+            Ok(f) => f
+        };
+        io::copy(stream, &mut file)
+            .map(|_| ())
+            .map_err(FtpError::ConnectionError)
+    })?;
 
     debug!("Retrieving dumps file...");
     conn.retr("taxdmp.zip", |stream| {
