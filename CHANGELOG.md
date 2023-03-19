@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] -- 2023-03-19
+### Added
+- `populate` command can now takes a `--taxdmp` option to load the dump from
+  that file instead of download it.
+
+### Changed
+- Update the dependencies.
+
 ## [1.4.0] -- 2020-02-09
 ### Added
 - `lca` command that takes two or more nodes and get their last common
