@@ -286,6 +286,8 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
     let xdg_dirs = xdg::BaseDirectories::with_prefix("fastax")?;
     let datadir = xdg_dirs.get_data_home();
     xdg_dirs.create_data_directory(&datadir)?;
+    let dbpath = datadir.join("taxonomy.db");
+    let db = fastax::db::DB::new(&dbpath)?;
 
     match opt.cmd {
         Command::Populate{email} => {
@@ -293,30 +295,30 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
         },
 
         Command::Show{terms, csv} => {
-            let nodes = fastax::get_nodes(&datadir, &terms)?;
+            let nodes = fastax::get_nodes(&db, &terms)?;
             show(nodes, csv)?;
         },
 
         Command::Lineage{terms, ranks, csv} => {
-            let nodes = fastax::get_nodes(&datadir, &terms)?;
-            let lineages = fastax::make_lineages(&datadir, &nodes)?;
+            let nodes = fastax::get_nodes(&db, &terms)?;
+            let lineages = fastax::make_lineages(&db, &nodes)?;
             show_lineages(lineages, ranks, csv)?;
         },
 
         Command::Tree{terms, internal, newick, format} => {
-            let nodes = fastax::get_nodes(&datadir, &terms)?;
-            let tree = fastax::make_tree(&datadir, &nodes)?;
+            let nodes = fastax::get_nodes(&db, &terms)?;
+            let tree = fastax::make_tree(&db, &nodes)?;
             show_tree(tree, internal, newick, format)?;
         },
 
         Command::SubTree{term, species, internal, newick, format} => {
-            let root = fastax::get_node(&datadir, term)?;
-            let tree = fastax::make_subtree(&datadir, root, species)?;
+            let root = fastax::get_node(&db, term)?;
+            let tree = fastax::make_subtree(&db, root, species)?;
             show_tree(tree, internal, newick, format)?;
         },
 
         Command::LCA{terms, csv} => {
-            let nodes = fastax::get_nodes(&datadir, &terms)?;
+            let nodes = fastax::get_nodes(&db, &terms)?;
 
             if nodes.len() < 2 {
                 error!("The lca command need at least two taxa.");
@@ -326,7 +328,7 @@ pub fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
             for pair in nodes.iter().combinations(2) {
                 let node1 = pair[0];
                 let node2 = pair[1];
-                let lca = fastax::get_lca(&datadir, &node1, &node2)?;
+                let lca = fastax::get_lca(&db, &node1, &node2)?;
                 lcas.push([node1.clone(), node2.clone(), lca]);
             }
 

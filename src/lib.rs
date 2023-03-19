@@ -14,13 +14,15 @@ extern crate zip;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
+use std::fs::remove_file;
 use std::path::PathBuf;
+use crate::db::DB;
 
 
 static NCBI_FTP_HOST: &str = "ftp.ncbi.nih.gov:21";
 static NCBI_FTP_PATH: &str = "/pub/taxonomy";
 
-mod db;
+pub mod db;
 pub mod tree;
 
 
@@ -32,52 +34,48 @@ pub fn populate_db(datadir: &PathBuf, email: String) -> Result<(), Box<dyn Error
     info!("Checking download integrity...");
     db::check_integrity(&datadir)?;
     info!("Everything's OK!");
-    info!("Extracting dumps...");
-    db::extract_dump(&datadir)?;
-    info!("Initialization of the database.");
-    db::init_db(&datadir)?;
-    info!("Loading dumps into local database. This may take some time.");
-    db::insert_divisions(&datadir)?;
-    db::insert_genetic_codes(&datadir)?;
-    db::insert_names(&datadir)?;
-    db::insert_nodes(&datadir)?;
-    info!("Removing temporary files.");
-    db::remove_temp_files(&datadir)?;
-    info!("C'est fini !");
+
+    let db = DB::new(&datadir.join("taxonomy.db"))?;
+    db.populate(&datadir.join("taxdmp.zip"))?;
+
+    info!("Removing temporary files...");
+    remove_file(&datadir.join("taxdmp.zip"))?;
+    remove_file(&datadir.join("taxdmp.zip.md5"))?;
+
     Ok(())
 }
 
 /// Fetch from the database the node that corresponds to the given `term`
 /// and return it. If the term does not correspond to a Node, an error
 /// is returned.
-pub fn get_node(datadir: &PathBuf, term: String) -> Result<Node, Box<dyn Error>> {
-    let ids = term_to_taxids(&datadir, &[term])?;
-    let node = db::get_nodes(&datadir, ids)?;
+pub fn get_node(db: &DB, term: String) -> Result<Node, Box<dyn Error>> {
+    let ids = term_to_taxids(db, &[term])?;
+    let node = db.get_nodes(ids)?;
     Ok(node[0].clone())
 }
 
 /// Fetch from the database the nodes that correspond to the given `terms`
 /// and return them. If any of the term does not correspond to a Node, an
 /// error is returned.
-pub fn get_nodes(datadir: &PathBuf, terms: &[String]) -> Result<Vec<Node>, Box<dyn Error>> {
-    let ids = term_to_taxids(&datadir, terms)?;
-    db::get_nodes(&datadir, ids)
+pub fn get_nodes(db: &DB, terms: &[String]) -> Result<Vec<Node>, Box<dyn Error>> {
+    let ids = term_to_taxids(db, terms)?;
+    db.get_nodes(ids)
 }
 
 /// Make the lineage for each of the given `nodes`.
-pub fn make_lineages(datadir: &PathBuf, nodes: &[Node]) -> Result<Vec<Vec<Node>>, Box<dyn Error>> {
+pub fn make_lineages(db: &DB, nodes: &[Node]) -> Result<Vec<Vec<Node>>, Box<dyn Error>> {
     // From https://stackoverflow.com/a/26370894
-    let lineages: Result<Vec<_>, _> = nodes.iter()
-        .map(|node| db::get_lineage(&datadir, node.tax_id))
+    let lineages: Result<Vec<Vec<Node>>, Box<dyn Error>> = nodes.iter()
+        .map(|node| db.get_lineage(node.tax_id))
         .collect();
     lineages
 }
 
 /// Make the tree with the Root as root and the given `nodes` as leaves.
 /// Any given node that is not a leaf (because another given node is in
-/// its sub-tree) is kept is the returned tree.
-pub fn make_tree(datadir: &PathBuf, nodes: &[Node]) -> Result<tree::Tree, Box<dyn Error>> {
-    let mut lineages = make_lineages(&datadir, nodes)?;
+/// its sub-tree) is kept in the returned tree.
+pub fn make_tree(db: &DB, nodes: &[Node]) -> Result<tree::Tree, Box<dyn Error>> {
+    let mut lineages = make_lineages(db, nodes)?;
     lineages.sort_by(|a, b| b.len().cmp(&a.len()));
 
     // The root taxid is 1
@@ -93,16 +91,16 @@ pub fn make_tree(datadir: &PathBuf, nodes: &[Node]) -> Result<tree::Tree, Box<dy
 /// Make the sub-tree with the given `root` as root.
 /// If `species` is true, then doesn't include in the resulting tree
 /// the nodes that are below nodes ranked as species (such as subspecies).
-pub fn make_subtree(datadir: &PathBuf, root: Node, species: bool) -> Result<tree::Tree, Box<dyn Error>> {
-    let nodes = db::get_children(&datadir, root.tax_id, species)?;
+pub fn make_subtree(db: &DB, root: Node, species: bool) -> Result<tree::Tree, Box<dyn Error>> {
+    let nodes = db.get_children(root.tax_id, species)?;
     Ok(tree::Tree::new(root.tax_id, &nodes))
 }
 
 /// Get the Last Common Ancestor (LCA) of `node1` and `node2`.
-pub fn get_lca(datadir: &PathBuf, node1: &Node, node2: &Node) -> Result<Node, Box<dyn Error>> {
+pub fn get_lca(db: &DB, node1: &Node, node2: &Node) -> Result<Node, Box<dyn Error>> {
     let node1 = node1.clone();
     let node2 = node2.clone();
-    let mut tree = make_tree(datadir, &[node1, node2])?;
+    let mut tree = make_tree(db, &[node1, node2])?;
     tree.simplify();
 
     // Two cases here: the LCA is the root, or the LCA is the root's child.
@@ -206,7 +204,7 @@ fn clean_term(term: &str) -> String {
 /// ID is fetched from the database. The input order is kept.
 /// Return either a vector of taxids or an error (for example, one scientific
 /// name cannot be found).
-fn term_to_taxids(datadir: &PathBuf, terms: &[String]) -> Result<Vec<i64>, Box<dyn Error>> {
+fn term_to_taxids(db: &DB, terms: &[String]) -> Result<Vec<i64>, Box<dyn Error>> {
     // We want to keep the input order. This makes the code slightly
     // more complicated.
     let mut ids: Vec<i64> = vec![];
@@ -227,7 +225,7 @@ fn term_to_taxids(datadir: &PathBuf, terms: &[String]) -> Result<Vec<i64>, Box<d
         };
     }
 
-    let name_ids = db::get_taxids(&datadir, names)?;
+    let name_ids = db.get_taxids(names)?;
     for (idx, taxid) in indices.iter().zip(name_ids.iter()) {
         ids[*idx] = *taxid;
     }
